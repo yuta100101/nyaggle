@@ -1,5 +1,6 @@
 from typing import List
 
+import lightgbm as lgbm
 import numpy as np
 
 from catboost import CatBoostClassifier
@@ -51,7 +52,7 @@ def test_cv_lgbm():
 
     pred_oof, pred_test, scores, importance = cross_validate(models, X_train, y_train, X_test, cv=5,
                                                              eval_func=roc_auc_score,
-                                                             fit_params={'early_stopping_rounds': 200})
+                                                             fit_params={'callbacks': [lgbm.early_stopping(200)]})
 
     print(scores)
     assert len(scores) == 5 + 1
@@ -141,7 +142,7 @@ def test_fit_params_callback():
 
     def fit_params(n: int, train_index: List[int], valid_index: List[int]):
         return {
-            'early_stopping_rounds': 100,
+            'callbacks': [lgbm.early_stopping(100)],
             'sample_weight': list(sample_weights[train_index]),
             'eval_sample_weight': [list(sample_weights[valid_index])]
         }
@@ -150,6 +151,6 @@ def test_fit_params_callback():
                                      eval_func=roc_auc_score, fit_params=fit_params)
 
     result_wo_weight = cross_validate(models, X_train, y_train, X_test, cv=5,
-                                      eval_func=roc_auc_score, fit_params={'early_stopping_rounds': 50})
+                                      eval_func=roc_auc_score, fit_params={'callbacks': [lgbm.early_stopping(50)]})
 
     assert result_w_weight.scores[-1] != result_wo_weight.scores[-1]

@@ -49,8 +49,7 @@ def find_best_lgbm_parameter(base_param: Dict, X: pd.DataFrame, y: pd.Series,
     dvalid = optuna_lgb.Dataset(X.iloc[test_index], y.iloc[test_index])
 
     params = copy.deepcopy(base_param)
-    if 'early_stopping_rounds' not in params:
-        params['early_stopping_rounds'] = 100
+    params.setdefault("early_stopping_rounds", 100)
 
     if params.get('feature_pre_filter'):
         warnings.warn("feature_pre_filter will be set to False to tune min_data_in_leaf.")

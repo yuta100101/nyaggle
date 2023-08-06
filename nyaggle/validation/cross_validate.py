@@ -5,6 +5,7 @@ from collections import namedtuple
 from logging import Logger, getLogger
 from typing import Any, Callable, Dict, Iterable, List, Optional, Union
 
+import lightgbm as lgbm
 import numpy as np
 import pandas as pd
 import sklearn.utils.multiclass as multiclass
@@ -63,7 +64,7 @@ def cross_validate(estimator: Union[BaseEstimator, List[BaseEstimator]],
             Used only in ``LGBMClassifier`` and ``LGBMRegressor``.
         early_stopping:
             If ``True``, ``eval_set`` will be added to ``fit_params`` for each fold.
-            ``early_stopping_rounds = 100`` will also be appended to fit_params if it does not already have one.
+            ``callbacks=[lightgbm.early_stopping(100)]`` (for LightGBM) or ``early_stopping_rounds = 100`` (for XGBoost or CatBoost) will also be appended to fit_params if it does not already have one.
         type_of_target:
             The type of target variable. If ``auto``, type is inferred by ``sklearn.utils.multiclass.type_of_target``.
             Otherwise, ``binary``, ``continuous``, or ``multiclass`` are supported.
@@ -167,16 +168,15 @@ def cross_validate(estimator: Union[BaseEstimator, List[BaseEstimator]],
         else:
             fit_params_fold = copy.copy(fit_params)
 
-        if is_gbdt_instance(estimator[n], ('lgbm', 'cat', 'xgb')):
-            if early_stopping:
-                if 'eval_set' not in fit_params_fold:
-                    fit_params_fold['eval_set'] = [(valid_x, valid_y)]
-                if 'early_stopping_rounds' not in fit_params_fold:
-                    fit_params_fold['early_stopping_rounds'] = 100
+        if is_gbdt_instance(estimator[n], ('lgbm', 'cat', 'xgb')) and early_stopping:
+            fit_params_fold.setdefault('eval_set', [(valid_x, valid_y)])
 
-            estimator[n].fit(train_x, train_y, **fit_params_fold)
-        else:
-            estimator[n].fit(train_x, train_y, **fit_params_fold)
+            if is_gbdt_instance(estimator[n], 'lgbm'):
+                fit_params_fold.setdefault("callbacks", [lgbm.early_stopping(100)])
+            else:
+                fit_params_fold.setdefault('early_stopping_rounds', 100)
+
+        estimator[n].fit(train_x, train_y, **fit_params_fold)
 
         oof[valid_idx] = _predict(estimator[n], valid_x, type_of_target)
         evaluated[valid_idx] = True

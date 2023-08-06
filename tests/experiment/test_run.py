@@ -3,6 +3,7 @@ import os
 from typing import List
 from urllib.parse import urlparse, unquote
 
+import lightgbm as lgbm
 import mlflow
 import numpy as np
 import pandas as pd
@@ -326,9 +327,9 @@ def test_experiment_fit_params(tmpdir_name):
     }
 
     result1 = run_experiment(params, X_train, y_train, X_test,
-                             os.path.join(tmpdir_name, '1'), fit_params={'early_stopping_rounds': None})
+                             os.path.join(tmpdir_name, '1'), fit_params={'callbacks': None})
     result2 = run_experiment(params, X_train, y_train, X_test,
-                             os.path.join(tmpdir_name, '2'), fit_params={'early_stopping_rounds': 5})
+                             os.path.join(tmpdir_name, '2'), fit_params={'callbacks': [lgbm.early_stopping(5)]})
 
     assert result1.models[-1].booster_.num_trees() == params['n_estimators']
     assert result2.models[-1].booster_.num_trees() < params['n_estimators']
@@ -351,7 +352,7 @@ def test_experiment_fit_params_callback(tmpdir_name):
 
     def fit_params(n: int, train_index: List[int], valid_index: List[int]):
         return {
-            'early_stopping_rounds': 100,
+            'callbacks': [lgbm.early_stopping(100)],
             'sample_weight': list(sample_weights[train_index]),
             'eval_sample_weight': [list(sample_weights[valid_index])]
         }
