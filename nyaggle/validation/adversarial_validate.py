@@ -1,6 +1,7 @@
 from collections import namedtuple
 from typing import Iterable, List, Optional, Union
 
+import lightgbm as lgbm
 import numpy as np
 import pandas as pd
 from sklearn.base import BaseEstimator
@@ -73,14 +74,15 @@ def adversarial_validate(X_train: pd.DataFrame,
         from lightgbm import LGBMClassifier
         estimator = LGBMClassifier(n_estimators=10000, objective='binary', importance_type=importance_type,
                                    random_state=0)
+        fit_params = {'callbacks': [lgbm.log_evaluation(-1)]}
     else:
         assert is_instance(estimator, ('lightgbm.sklearn.LGBMModel', 'catboost.core.CatBoost')), \
             'Only CatBoostClassifier or LGBMClassifier is allowed'
+        fit_params = {'verbose': -1}
 
     if cv is None:
         cv = Take(1, KFold(5, shuffle=True, random_state=0))
 
-    fit_params = {'verbose': -1}
     if categorical_feature:
         fit_params['categorical_feature'] = categorical_feature
 
